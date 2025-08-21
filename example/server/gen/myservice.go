@@ -5,8 +5,9 @@ package gen
 import (
 	"context"
 	"encoding/xml"
-	"github.com/hooklift/gowsdl/soap"
 	"time"
+
+	"github.com/GreatPlainsComm/gowsdl/soap"
 )
 
 // against "unused imports"

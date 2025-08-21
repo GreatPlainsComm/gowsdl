@@ -1,0 +1,76 @@
+package soap
+
+import (
+	"bytes"
+	"encoding/xml"
+	"io"
+	"strings"
+)
+
+type NamespaceEncoder struct {
+	encoder    *xml.Encoder
+	buffer     *bytes.Buffer
+	writer     io.Writer
+	namespaces map[string]string
+}
+
+func newNamespaceEncoder(w io.Writer, namespaces map[string]string) *NamespaceEncoder {
+	buffer := &bytes.Buffer{}
+	return &NamespaceEncoder{
+		encoder:    xml.NewEncoder(buffer),
+		buffer:     buffer,
+		writer:     w,
+		namespaces: namespaces,
+	}
+}
+
+func (ne *NamespaceEncoder) Encode(v interface{}) error {
+	// First encode normally
+	if err := ne.encoder.Encode(v); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (ne *NamespaceEncoder) Flush() error {
+	if err := ne.encoder.Flush(); err != nil {
+		return err
+	}
+
+	// Get the XML string and add namespace prefixes
+	xmlStr := ne.buffer.String()
+
+	// Add namespace prefixes to all elements
+	for prefix, _ := range ne.namespaces {
+		if prefix != "soap" && prefix != "xsi" && prefix != "xsd" {
+			xmlStr = ne.addNamespacePrefixes(xmlStr, prefix)
+			break // Use first non-standard namespace
+		}
+	}
+
+	// Write the modified XML to the original writer
+	_, err := ne.writer.Write([]byte(xmlStr))
+	return err
+}
+
+func (ne *NamespaceEncoder) addNamespacePrefixes(xmlStr, prefix string) string {
+	// Add prefix to all elements that should have it
+	elements := []string{"CustomerLookup", "Requestor", "AuthorizationToken", "Request", "CustomerID", "AuthenticatedKey", "ID"}
+
+	for _, elem := range elements {
+		if elem == "CustomerLookup" {
+			// Add xmlns attribute to root element
+			xmlStr = strings.Replace(xmlStr, "<"+elem+">",
+				"<"+prefix+":"+elem+" xmlns:"+prefix+"=\""+ne.namespaces[prefix]+"\">", 1)
+		} else {
+			xmlStr = strings.ReplaceAll(xmlStr, "<"+elem+">", "<"+prefix+":"+elem+">")
+		}
+		xmlStr = strings.ReplaceAll(xmlStr, "</"+elem+">", "</"+prefix+":"+elem+">")
+	}
+
+	return xmlStr
+}
+
+func (ne *NamespaceEncoder) GetResult() string {
+	return ne.buffer.String()
+}
