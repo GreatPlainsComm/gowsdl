@@ -490,7 +490,7 @@ func (s *Client) call(ctx context.Context, soapAction string, request, response 
 	}
 
 	// Add default namespaces
-	//envelope.Namespaces["xsi"] = "http://www.w3.org/2001/XMLSchema-instance"
+	envelope.Namespaces["xsi"] = "http://www.w3.org/2001/XMLSchema-instance"
 	//envelope.Namespaces["xsd"] = "http://www.w3.org/2001/XMLSchema"
 
 	// Apply custom namespaces if set

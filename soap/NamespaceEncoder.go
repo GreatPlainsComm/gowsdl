@@ -154,6 +154,16 @@ func (ne *NamespaceEncoder) addPrefixToAllTags(xmlStr, prefix string) string {
 				tag = prefix + ":" + tagName + tag[spaceIdx:]
 				// Convert xmlns="..." to xmlns:prefix="..."
 				tag = strings.Replace(tag, ` xmlns="`, ` xmlns:`+prefix+`="`, 1)
+				// Add xmlns:xsi if element has xsi: attributes (insert at beginning)
+				if strings.Contains(tag, "xsi:") && !strings.Contains(tag, "xmlns:xsi=") {
+					if xsiURI, exists := ne.namespaces["xsi"]; exists {
+						// Insert xmlns:xsi right after element name
+						spacePos := strings.Index(tag, " ")
+						if spacePos != -1 {
+							tag = tag[:spacePos] + ` xmlns:xsi="` + xsiURI + `"` + tag[spacePos:]
+						}
+					}
+				}
 			} else if strings.HasSuffix(tag, "/") {
 				tag = prefix + ":" + tagName + "/"
 			} else {
