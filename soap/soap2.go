@@ -524,16 +524,16 @@ func (s *Client) call(ctx context.Context, soapAction string, request, response 
 		encoder = newMtomEncoder(buffer)
 	} else if s.opts.mma {
 		encoder = newMmaEncoder(buffer, s.attachments)
-	} else if s.namespaces != nil && len(s.namespaces) > 0 {
+	} else if len(envelope.Namespaces) > 0 {
 		// Find first non-standard namespace as default
 		defaultNS := ""
-		for prefix := range s.namespaces {
+		for prefix := range envelope.Namespaces {
 			if prefix != "soap" && prefix != "xsi" && prefix != "xsd" {
 				defaultNS = prefix
 				break
 			}
 		}
-		encoder = newNamespaceEncoder(buffer, s.namespaces, defaultNS)
+		encoder = newNamespaceEncoder(buffer, envelope.Namespaces, defaultNS)
 	} else {
 		encoder = xml.NewEncoder(buffer)
 	}
