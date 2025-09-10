@@ -15,6 +15,10 @@ type NamespaceEncoder struct {
 	defaultNS  string
 }
 
+func NewNamespaceEncoder(w io.Writer, namespaces map[string]string, defaultNS string) *NamespaceEncoder {
+	return newNamespaceEncoder(w, namespaces, defaultNS)
+}
+
 func newNamespaceEncoder(w io.Writer, namespaces map[string]string, defaultNS string) *NamespaceEncoder {
 	buffer := &bytes.Buffer{}
 	return &NamespaceEncoder{
@@ -57,6 +61,9 @@ func (ne *NamespaceEncoder) applyNamespaces(xmlStr string) string {
 	// Apply default namespace prefix to non-standard elements
 	if ne.defaultNS != "" {
 		xmlStr = ne.addDefaultNamespacePrefix(xmlStr)
+	} else {
+		// Even without default namespace, check for xsi: attributes
+		xmlStr = ne.addXsiNamespaceDeclarations(xmlStr)
 	}
 
 	return xmlStr
@@ -182,6 +189,49 @@ func (ne *NamespaceEncoder) addPrefixToAllTags(xmlStr, prefix string) string {
 						result = result[:start+1] + tag + result[end:]
 						end += len(` xmlns:xsi="` + xsiURI + `"`)
 					}
+				}
+			}
+		}
+
+		offset = end + 1
+	}
+
+	return result
+}
+
+func (ne *NamespaceEncoder) addXsiNamespaceDeclarations(xmlStr string) string {
+	result := xmlStr
+	offset := 0
+
+	for {
+		start := strings.Index(result[offset:], "<")
+		if start == -1 {
+			break
+		}
+		start += offset
+
+		end := strings.Index(result[start:], ">")
+		if end == -1 {
+			break
+		}
+		end += start
+
+		tag := result[start+1 : end]
+
+		// Skip XML declarations, comments, and closing tags
+		if strings.HasPrefix(tag, "?") || strings.HasPrefix(tag, "!") || strings.HasPrefix(tag, "/") {
+			offset = end + 1
+			continue
+		}
+
+		// Check for xsi: attributes
+		if strings.Contains(tag, "xsi:") && !strings.Contains(tag, "xmlns:xsi=") {
+			if xsiURI, exists := ne.namespaces["xsi"]; exists {
+				spacePos := strings.Index(tag, " ")
+				if spacePos != -1 {
+					tag = tag[:spacePos] + ` xmlns:xsi="` + xsiURI + `"` + tag[spacePos:]
+					result = result[:start+1] + tag + result[end:]
+					end += len(` xmlns:xsi="` + xsiURI + `"`)
 				}
 			}
 		}
